@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBin 360 — AI-Powered Smart Waste Management</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Ensure tailwind config object is properly initialized
+        window.tailwind = window.tailwind || {};
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .leaflet-container { width: 100%; height: 100%; border-radius: 0.75rem; z-index: 10; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 h-full flex flex-col overflow-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app" class="flex h-full w-full overflow-hidden">
+
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 transition-all duration-300 z-30 select-none">
+            <!-- App Branding -->
+            <div class="p-5 flex items-center gap-3 border-b border-slate-800">
+                <div class="h-10 w-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                    <i data-lucide="trash-2" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-white text-lg tracking-tight">SmartBin 360</h1>
+                    <p class="text-xs text-emerald-400 font-medium flex items-center gap-1">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        IoT + AI Cloud Active
+                    </p>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Operations</p>
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-emerald-600 text-white shadow-md shadow-emerald-900/20">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
+                </button>
+                <button onclick="switchTab('map')" id="nav-map" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="map" class="w-5 h-5"></i> Live Map & GPS
+                </button>
+                <button onclick="switchTab('bins')" id="nav-bins" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="database" class="w-5 h-5"></i> Dustbins Fleet
+                </button>
+                <button onclick="switchTab('routes')" id="nav-routes" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="navigation" class="w-5 h-5"></i> Route Optimization
+                </button>
+
+                <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-6 mb-2">Intelligence & Eco</p>
+                <button onclick="switchTab('ai')" id="nav-ai" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="brain" class="w-5 h-5"></i> AI Predictions & Demand
+                </button>
+                <button onclick="switchTab('classify')" id="nav-classify" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="scan-line" class="w-5 h-5"></i> Waste Classifier AI
+                </button>
+                <button onclick="switchTab('alerts')" id="nav-alerts" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="bell" class="w-5 h-5"></i> Alerts Center
+                    <span id="alert-badge" class="ml-auto bg-rose-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">3</span>
+                </button>
+
+                <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-6 mb-2">System & IoT</p>
+                <button onclick="switchTab('analytics')" id="nav-analytics" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i> Analytics & Reports
+                </button>
+                <button onclick="switchTab('simulator')" id="nav-simulator" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="cpu" class="w-5 h-5"></i> IoT & ESP32 Simulator
+                </button>
+                <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+                    <i data-lucide="shield-check" class="w-5 h-5"></i> RBAC & Settings
+                </button>
+            </nav>
+
+            <!-- User Profile & Role Switcher Footer -->
+            <div class="p-4 border-t border-slate-800 bg-slate-950/50">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center font-bold text-emerald-400 border border-slate-700" id="user-avatar">
+                            AD
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-white leading-tight" id="user-name">Alex Morgan</p>
+                            <p class="text-xs text-slate-400 font-medium" id="user-role-label">System Admin</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Role Selector Dropdown -->
+                <div class="relative">
+                    <select id="role-selector" onchange="changeUserRole(this.value)" class="w-full bg-slate-800 text-xs text-slate-200 rounded-lg px-2.5 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+                        <option value="Admin">Role: Administrator</option>
+                        <option value="Collector">Role: Waste Collector</option>
+                        <option value="Campus Manager">Role: Campus Manager</option>
+                        <option value="Viewer">Role: Public Viewer</option>
+                    </select>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
+            <!-- Top Header -->
+            <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 shadow-sm z-20">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard Overview</h2>
+                        <span id="live-indicator" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live IoT Telemetry
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <!-- Solar Power System Status Badge -->
+                    <div class="hidden md:flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded-lg text-xs font-medium">
+                        <i data-lucide="sun" class="w-4 h-4 text-amber-500"></i>
+                        <span>Solar Telemetry: <strong id="avg-solar-health">98.4%</strong></span>
+                    </div>
+
+                    <!-- Quick Action: Trigger Simulation Pulse -->
+                    <button onclick="triggerSimulationTick()" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm">
+                        <i data-lucide="zap" class="w-4 h-4"></i> Simulate IoT Reading
+                    </button>
+
+                    <!-- Notification Toggle Button -->
+                    <button onclick="switchTab('alerts')" class="relative p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white"></span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Scrollable View Container -->
+            <div id="view-container" class="flex-1 overflow-y-auto p-6 relative">
+
+                <!-- ==================== TAB 1: DASHBOARD ==================== -->
+                <div id="tab-dashboard" class="tab-content space-y-6">
+                    <!-- Welcome & Quick Stats Banner -->
+                    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="text-2xl font-bold tracking-tight">SmartBin 360 Command Center</h3>
+                            <p class="text-slate-300 text-sm mt-1">Real-time IoT telemetry, AI waste forecasting, and optimized municipal collection.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center">
+                                <span class="block text-xs text-slate-300 font-medium">System Health</span>
+                                <span class="text-lg font-bold text-emerald-400">99.2% Uptime</span>
+                            </div>
+                            <div class="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-center">
+                                <span class="block text-xs text-slate-300 font-medium">Active Nodes</span>
+                                <span class="text-lg font-bold text-white" id="stat-total-bins-banner">24 Bins</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metric Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Bins</p>
+                                <h4 class="text-2xl font-bold text-slate-900 mt-1" id="stat-total-bins">24</h4>
+                                <span class="text-xs text-emerald-600 font-medium mt-1 inline-block">100% Online Grid</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <i data-lucide="trash" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Critical / Full</p>
+                                <h4 class="text-2xl font-bold text-rose-600 mt-1" id="stat-full-bins">5</h4>
+                                <span class="text-xs text-rose-600 font-medium mt-1 inline-block">Needs immediate pickup</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Alerts</p>
+                                <h4 class="text-2xl font-bold text-amber-600 mt-1" id="stat-active-alerts">3</h4>
+                                <span class="text-xs text-amber-600 font-medium mt-1 inline-block">Low battery / overflow</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <i data-lucide="bell" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Collected Today</p>
+                                <h4 class="text-2xl font-bold text-indigo-600 mt-1" id="stat-collected-today">14</h4>
+                                <span class="text-xs text-indigo-600 font-medium mt-1 inline-block">1,240 kg waste handled</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Solar Health</p>
+                                <h4 class="text-2xl font-bold text-amber-500 mt-1" id="stat-solar-health">98.4%</h4>
+                                <span class="text-xs text-slate-500 font-medium mt-1 inline-block">Avg Battery Charge</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <i data-lucide="sun" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Grid: Live Status Table + Quick Map -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Dustbin Quick Status Table -->
+                        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h4 class="font-bold text-slate-800 text-lg">Real-Time Dustbin Telemetry</h4>
+                                    <p class="text-xs text-slate-500">Live fill level percentage, battery status, and sensor telemetry.</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="switchTab('bins')" class="text-xs font-semibold text-emerald-600 hover:text-emerald-700">View All &rarr;</button>
+                                </div>
+                            </div>
+
+                            <div class="overflow-x-auto flex-1">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-slate-200 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+                                            <th class="py-3 px-3">Bin ID & Location</th>
+                                            <th class="py-3 px-3">Category</th>
+                                            <th class="py-3 px-3">Fill Level</th>
+                                            <th class="py-3 px-3">Battery / Solar</th>
+                                            <th class="py-3 px-3">Status</th>
+                                            <th class="py-3 px-3 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dashboard-bins-tbody" class="divide-y divide-slate-100 text-sm">
+                                        <!-- Dynamically populated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Mini Map & Route Summary Card -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-slate-800 text-lg">Live Map Preview</h4>
+                                <button onclick="switchTab('map')" class="text-xs text-emerald-600 font-semibold">Expand Map</button>
+                            </div>
+                            <div class="h-64 rounded-xl overflow-hidden border border-slate-200 relative mb-4">
+                                <div id="mini-map" class="w-full h-full"></div>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                                <div class="flex justify-between text-xs font-medium">
+                                    <span class="text-slate-500">Optimized Route Distance:</span>
+                                    <span class="text-slate-800 font-bold">14.2 km</span>
+                                </div>
+                                <div class="flex justify-between text-xs font-medium">
+                                    <span class="text-slate-500">Estimated Collection Time:</span>
+                                    <span class="text-slate-800 font-bold">45 mins</span>
+                                </div>
+                                <div class="flex justify-between text-xs font-medium">
+                                    <span class="text-slate-500">Fuel Saved via AI:</span>
+                                    <span class="text-emerald-600 font-bold">32% (~12 L)</span>
+                                </div>
+                            </div>
+                            <button onclick="switchTab('routes')" class="mt-4 w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl font-semibold text-xs transition flex items-center justify-center gap-2">
+                                <i data-lucide="navigation" class="w-4 h-4"></i> Launch Route Optimizer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== TAB 2: LIVE MAP & GPS ==================== -->
+                <div id="tab-map" class="tab-content hidden space-y-6 h-full flex flex-col">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm shrink-0">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800">Interactive GPS Dustbin Map</h3>
+                            <p class="text-xs text-slate-500">Real-time coordinates, geofenced campus zones, and marker status indicators.</p>
+                        </div>
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <input type="text" id="map-search" oninput="filterMapMarkers(this.value)" placeholder="Search bin ID or location..." class="bg-slate-100 border border-slate-300 rounded-xl px-3 py-2 text-xs w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <select id="map-filter-status" onchange="filterMapMarkersByStatus(this.value)" class="bg-slate-100 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="ALL">All Statuses</option>
+                                <option value="Critical">Red (95-100%)</option>
+                                <option value="Warning">Orange/Yellow (50-94%)</option>
+                                <option value="Normal">Green (0-49%)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Large Map Container -->
+                    <div class="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-2 min-h-[500px] relative">
+                        <div id="main-map" class="w-full h-full rounded-xl"></div>
+                        <!-- Legend Overlay -->
+                        <div class="absolute bottom-6 left-6 bg-white/90 backdrop-blur-md p-3 rounded-xl border border-slate-200 shadow-lg z-20 flex items-center gap-4 text-xs font-medium">
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> 0-49% (Normal)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> 50-79% (Medium)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-orange-500"></span> 80-94% (High)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-600"></span> 95-100% (Critical)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== TAB 3: DUSTBINS FLEET ==================== -->
+                <div id="tab-bins" class="tab-content hidden space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">Dustbin Fleet Management</h3>
+                            <p class="text-xs text-slate-500">Complete registry of smart IoT bins across campus zones.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button onclick="openAddBinModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 shadow-sm">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Add New Bin
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table & Filter card -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <div class="flex flex-col md:flex-row justify-between gap-4 mb-6">
+                            <div class="flex items-center gap-3 flex-1">
+                                <div class="relative flex-1">
+                                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                                    <input type="text" id="fleet-search" oninput="renderFleetTable()" placeholder="Search by Bin ID, Location, or Waste Type..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <select id="fleet-filter-category" onchange="renderFleetTable()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                    <option value="ALL">All Categories</option>
+                                    <option value="Wet Waste">Wet Waste</option>
+                                    <option value="Dry Waste">Dry Waste</option>
+                                    <option value="Recyclable">Recyclable</option>
+                                    <option value="Hazardous">Hazardous</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+                                        <th class="py-3 px-4">Bin ID / Zone</th>
+                                        <th class="py-3 px-4">Waste Category</th>
+                                        <th class="py-3 px-4">Fill Percentage</th>
+                                        <th class="py-3 px-4">Solar Telemetry (Battery)</th>
+                                        <th class="py-3 px-4">Last Update</th>
+                                        <th class="py-3 px-4">Status</th>
+                                        <th class="py-3 px-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fleet-tbody" class="divide-y divide-slate-100 text-sm">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== TAB 4: ROUTE OPTIMIZATION ==================== -->
+                <div id="tab-routes" class="tab-content hidden space-y-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">Smart Collection Route Optimization</h3>
+                            <p class="text-xs text-slate-500">AI-calculated optimal municipal truck routing based on fill urgency and distance.</p>
+                        </div>
+                        <button onclick="calculateOptimalRoute()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 shadow-sm">
+                            <i data-lucide="route" class="w-4 h-4"></i> Generate New Route
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Route Stats & Stops List -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col space-y-4">
+                            <h4 class="font-bold text-slate-800 text-base">Optimized Stops Sequence</h4>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-3 gap-2 text-center">
+                                <div>
+                                    <span class="block text-[10px] text-slate-500 font-bold uppercase">Total Bins</span>
+                                    <span class="text-lg font-bold text-slate-800" id="route-bin-count">5 Bins</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] text-slate-500 font-bold uppercase">Est. Distance</span>
+                                    <span class="text-lg font-bold text-indigo-600">14.2 km</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] text-slate-500 font-bold uppercase">Fuel Saved</span>
+                                    <span class="text-lg font-bold text-emerald-600">32%</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3 flex-1 overflow-y-auto max-h-[380px]" id="route-stops-list">
+                                <!-- Dynamic stops -->
+                            </div>
+                        </div>
+
+                        <!-- Route Map & Dispatcher -->
+                        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <h4 class="font-bold text-slate-800 text-base mb-4">Route Map & Fleet Dispatcher</h4>
+                            <div class="h-80 rounded-xl overflow-hidden border border-slate-200 relative mb-4">
+                                <div id="route-map" class="w-full h-full"></div>
+                            </div>
+                            <div class="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                                        TR-1
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-slate-800">Truck Alpha (Electric EV-04)</p>
+                                        <p class="text-xs text-slate-500">Assigned Driver: Rajesh Kumar • Capacity: 85% available</p>
+                                    </div>
+                                </div>
+                                <button onclick="dispatchTruck()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">
+                                    Dispatch Truck
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== TAB 5: AI PREDICTIONS & DEMAND ==================== -->
+                <div id="tab-ai" class="tab-content hidden space-y-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">AI Fill-Level Prediction & Demand Forecasting</h3>
+                            <p class="text-xs text-slate-500">Machine learning models predicting when bins will reach 100% capacity based on historical campus footfall.</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-200 flex items-center gap-1.5">
+                            <i data-lucide="brain" class="w-4 h-4"></i> Scikit-Learn Random Forest Model v2.4
+                        </span>
+                    </div>
+
+                    <!-- AI Chart & Predictions Table -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Chart -->
+                        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                            <h4 class="font-bold text-slate-800 text-base mb-4">7-Day Waste Volume Demand Forecast</h4>
+                            <div class="h-72">
+                                <canvas id="demandForecastChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- AI Recommendations Sidebar -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <h4 class="font-bold text-slate-800 text-base mb-4">AI Early Warnings & Insights</h4>
+                            <div class="space-y-3 overflow-y-auto max-h-[300px]" id="ai-insights-list">
+                                <!-- Dynamic insights -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== TAB 6: WASTE CLASSIFICATION AI ==================== -->
+                <div id="tab-classify" class="tab-content hidden space-y-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xl font-bold text-slate-800">AI Waste Classification & Sustainability Scanner</h3>
+                        <p class="text-xs text-slate-500">Upload or simulate waste item photos to automatically classify into Wet, Dry, Recyclable, or Hazardous categories.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Upload Box -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col items-center justify-center text-center">
+                            <div class="w-20 h-20 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+                                <i data-lucide="upload-cloud" class="w-10 h-10"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 text-lg">Drop Waste Image Here</h4>
+                            <p class="text-xs text-slate-500 max-w-xs mt-1">Supports PNG, JPG, or WebP. Test our pre-trained computer vision classification model.</p>
+                            
+                            <!-- Preset Sample Buttons -->
+                            <div class="flex flex-wrap gap-2 mt-6 justify-center">
+                                <button onclick="simulateImageClassification('Plastic Bottle', 'Recyclable', 98.4)" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition">
+                                    🥤 Plastic Bottle
+                                </button>
+                                <button onclick="simulateImageClassification('Banana Peel', 'Wet Waste', 95.1)" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition">
+                                    🍌 Banana Peel
+                                </button>
+                                <button onclick="simulateImageClassification('Used Battery', 'Hazardous', 99.2)" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition">
+                                    🔋 Old Battery
+                                </button>
+                                <button onclick="simulateImageClassification('Cardboard Box', 'Dry Waste', 96.8)" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition">
+                                    📦 Cardboard
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Result Card -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between" id="classification-result-card">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg mb-2">Classification Result</h4>
+                                <div id="classification-output" class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center py-12">
+                                    <i data-lucide="scan" class="w-12 h-12 text-slate-400 mx-auto mb-2"></i>
+                                    <p class="text-sm font-semibold text-slate-600">Select a sample item or upload an image to begin AI classification.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== TAB 7: ALERTS CENTER ==================== -->
+                <div id="tab-alerts" class="tab-content hidden space-y-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">Smart Alerts & Notifications Center</h3>
+                            <p class="text-xs text-slate-500">Real-time alerts for overflow risks, low solar battery, and sensor failures.</p>
+                        </div>
+                        <button onclick="clearAllAlerts()" class="text-xs font-semibold text-rose-600 hover:text-rose-700">Clear All Resolved</button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <div class="space-y-4" id="alerts-list-container">
+                            <!-- Dynamic alerts -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== TAB 8: ANALYTICS & REPORTS ==================== -->
+                <div id="tab-analytics" class="tab-content hidden space-y-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">Advanced Analytics & Municipal Reports</h3>
+                            <p class="text-xs text-slate-500">Waste collection trends, recycling rates, and carbon offset statistics.</p>
+                        </div>
+                        <button onclick="exportCSVReport()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition flex items-center gap-2">
+                            <i data-lucide="download" class="w-4 h-4"></i> Export CSV Report
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                            <h4 class="font-bold text-slate-800 text-base mb-4">Daily Waste Volume Collected (kg)</h4>
+                            <div class="h-64">
+                                <canvas id="dailyWasteChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                            <h4 class="font-bold text-slate-800 text-base mb-4">Waste Classification Breakdown</h4>
+                            <div class="h-64 flex justify-center">
+                                <canvas id="wastePieChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== TAB 9: IOT & ESP32 SIMULATOR ==================== -->
+                <div id="tab-simulator" class="tab-content hidden space-y-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xl font-bold text-slate-800">ESP32 Hardware & Sensor Simulator</h3>
+                        <p class="text-xs text-slate-500">Simulate ultrasonic distance sensors, solar battery telemetry, and MQTT data packets.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Manual Sensor Override Card -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                            <h4 class="font-bold text-slate-800 text-base">Live Telemetry Injection</h4>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Select Bin to Simulate</label>
+                                <select id="sim-bin-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                    <!-- Dynamic options -->
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Fill Level Percentage: <span id="sim-fill-val" class="font-bold text-emerald-600">45%</span></label>
+                                <input type="range" id="sim-fill-range" min="0" max="100" value="45" oninput="document.getElementById('sim-fill-val').innerText = this.value + '%'" class="w-full accent-emerald-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Solar Battery Voltage: <span id="sim-batt-val" class="font-bold text-amber-600">3.85V (88%)</span></label>
+                                <input type="range" id="sim-batt-range" min="30" max="42" value="38" oninput="document.getElementById('sim-batt-val').innerText = (this.value/10).toFixed(2) + 'V'" class="w-full accent-amber-500">
+                            </div>
+
+                            <button onclick="applySensorSimulation()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-semibold transition">
+                                Push MQTT Telemetry Packet
+                            </button>
+                        </div>
+
+                        <!-- ESP32 Firmware Blueprint Code Viewer -->
+                        <div class="bg-slate-900 text-slate-200 rounded-2xl p-6 font-mono text-xs shadow-sm overflow-hidden flex flex-col">
+                            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+                                <span class="text-emerald-400 font-bold flex items-center gap-2">
+                                    <i data-lucide="cpu" class="w-4 h-4"></i> ESP32_Firmware.ino
+                                </span>
+                                <span class="text-[10px] text-slate-400">C++ / Arduino IDE</span>
+                            </div>
+                            <pre class="overflow-x-auto flex-1 text-[11px] text-slate-300">
+#include &lt;WiFi.h&gt;
+#include &lt;PubSubClient.h&gt;
+
+const char* ssid = "Campus_IoT_Secure";
+const char* password = "smartbinpassword";
+const char* mqtt_server = "mqtt.smartbin360.io";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+const int trigPin = 5;
+const int echoPin = 18;
+const int solarPin = 34; // Solar panel battery telemetry
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  WiFi.begin(ssid, password);
+}
+
+void loop() {
+  long duration;
+  digitalWrite(trigPin, LOW); delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH); delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  float distance = duration * 0.034 / 2; // Distance in cm
+  
+  // Calculate fill percentage (Bin depth = 100cm)
+  int fillPercent = map(distance, 10, 100, 100, 0);
+  
+  // Read solar battery voltage
+  int sensorValue = analogRead(solarPin);
+  float voltage = sensorValue * (3.3 / 4095.0) * 2.0; 
+
+  // Publish via MQTT
+  client.publish("smartbin/360/telemetry", String(fillPercent).c_str());
+  delay(5000);
+}
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==================== TAB 10: RBAC & SETTINGS ==================== -->
+                <div id="tab-admin" class="tab-content hidden space-y-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xl font-bold text-slate-800">RBAC, User Management & System Settings</h3>
+                        <p class="text-xs text-slate-500">Configure role-based access permissions, API keys, and notification channels.</p>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <h4 class="font-bold text-slate-800 text-base mb-4">Active User Directory</h4>
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+                                    <th class="py-3 px-3">User Name</th>
+                                    <th class="py-3 px-3">Email</th>
+                                    <th class="py-3 px-3">Assigned Role</th>
+                                    <th class="py-3 px-3">Status</th>
+                                    <th class="py-3 px-3 text-right">Access Level</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                <tr>
+                                    <td class="py-3 px-3 font-semibold text-slate-800">Alex Morgan</td>
+                                    <td class="py-3 px-3 text-slate-500 text-xs">alex.morgan@smartbin360.io</td>
+                                    <td class="py-3 px-3"><span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">Admin</span></td>
+                                    <td class="py-3 px-3"><span class="text-emerald-600 text-xs font-medium">Online</span></td>
+                                    <td class="py-3 px-3 text-right text-xs font-mono text-slate-500">Full Access (CRUD)</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-3 font-semibold text-slate-800">Rajesh Kumar</td>
+                                    <td class="py-3 px-3 text-slate-500 text-xs">rajesh.collector@smartbin360.io</td>
+                                    <td class="py-3 px-3"><span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Waste Collector</span></td>
+                                    <td class="py-3 px-3"><span class="text-emerald-600 text-xs font-medium">Online</span></td>
+                                    <td class="py-3 px-3 text-right text-xs font-mono text-slate-500">Route & Collection Update</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-3 font-semibold text-slate-800">Dr. Sarah Jenkins</td>
+                                    <td class="py-3 px-3 text-slate-500 text-xs">s.jenkins@campus.edu</td>
+                                    <td class="py-3 px-3"><span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Campus Manager</span></td>
+                                    <td class="py-3 px-3"><span class="text-slate-400 text-xs font-medium">Idle</span></td>
+                                    <td class="py-3 px-3 text-right text-xs font-mono text-slate-500">Analytics & Reports</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: ADD / EDIT DUSTBIN -->
+    <div id="bin-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <h3 class="text-lg font-bold text-slate-800 mb-4" id="modal-title">Register New Smart Dustbin</h3>
+            <form onsubmit="saveNewBin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Bin ID & Name</label>
+                    <input type="text" id="input-bin-id" required placeholder="e.g. BIN-CAMPUS-109" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Campus Location</label>
+                    <input type="text" id="input-bin-loc" required placeholder="e.g. Engineering Quad Block B" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Waste Category</label>
+                    <select id="input-bin-cat" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="Wet Waste">Wet Waste</option>
+                        <option value="Dry Waste">Dry Waste</option>
+                        <option value="Recyclable">Recyclable</option>
+                        <option value="Hazardous">Hazardous</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Latitude</label>
+                        <input type="text" id="input-bin-lat" value="13.6288" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Longitude</label>
+                        <input type="text" id="input-bin-lng" value="79.4192" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeAddBinModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">Save Bin</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- APPLICATION LOGIC SCRIPT -->
+    <script>
+        // --- MOCK DATABASE ---
+        let binsData = [
+            { id: "BIN-101", location: "Central Library Quad", category: "Recyclable", fill: 88, battery: 92, lat: 13.6288, lng: 79.4192, status: "Warning", lastUpdate: "2 mins ago" },
+            { id: "BIN-102", location: "Engineering Block A", category: "Dry Waste", fill: 97, battery: 84, lat: 13.6302, lng: 79.4180, status: "Critical", lastUpdate: "Just now" },
+            { id: "BIN-103", location: "Student Cafeteria South", category: "Wet Waste", fill: 42, battery: 99, lat: 13.6275, lng: 79.4210, status: "Normal", lastUpdate: "5 mins ago" },
+            { id: "BIN-104", location: "Science Auditorium Lobby", category: "Recyclable", fill: 65, battery: 91, lat: 13.6315, lng: 79.4225, status: "Warning", lastUpdate: "12 mins ago" },
+            { id: "BIN-105", location: "Hostel Block 3 Gate", category: "Hazardous", fill: 99, battery: 76, lat: 13.6260, lng: 79.4170, status: "Critical", lastUpdate: "1 min ago" },
+            { id: "BIN-106", location: "Sports Stadium Entrance", category: "Dry Waste", fill: 22, battery: 100, lat: 13.6330, lng: 79.4200, status: "Normal", lastUpdate: "15 mins ago" },
+            { id: "BIN-107", location: "Admin Building Porch", category: "Recyclable", fill: 54, battery: 95, lat: 13.6295, lng: 79.4165, status: "Warning", lastUpdate: "8 mins ago" },
+            { id: "BIN-108", location: "Medical Center West", category: "Hazardous", fill: 91, battery: 88, lat: 13.6250, lng: 79.4190, status: "Critical", lastUpdate: "3 mins ago" },
+            { id: "BIN-109", location: "Computer Science Lab", category: "Dry Waste", fill: 34, battery: 96, lat: 13.6310, lng: 79.4185, status: "Normal", lastUpdate: "20 mins ago" },
+            { id: "BIN-110", location: "Campus Main Gate", category: "Recyclable", fill: 78, battery: 90, lat: 13.6270, lng: 79.4150, status: "Warning", lastUpdate: "6 mins ago" },
+            { id: "BIN-111", location: "Architecture Studio", category: "Wet Waste", fill: 12, battery: 98, lat: 13.6322, lng: 79.4215, status: "Normal", lastUpdate: "25 mins ago" },
+            { id: "BIN-112", location: "Business School Atrium", category: "Dry Waste", fill: 96, battery: 82, lat: 13.6280, lng: 79.4230, status: "Critical", lastUpdate: "Just now" }
+        ];
+
+        let alertsData = [
+            { id: 1, title: "Critical Overflow Risk", desc: "Bin BIN-102 (Engineering Block A) has reached 97% capacity.", time: "2 mins ago", severity: "rose" },
+            { id: 2, title: "Critical Overflow Risk", desc: "Bin BIN-105 (Hostel Block 3) reached 99% capacity. Hazardous waste alert.", time: "5 mins ago", severity: "rose" },
+            { id: 3, title: "Low Solar Battery Telemetry", desc: "Bin BIN-112 solar panel output low (82% battery). Check shade obstruction.", time: "14 mins ago", severity: "amber" }
+        ];
+
+        // Maps and Charts references
+        let mainMap = null;
+        let miniMap = null;
+        let mapMarkers = {};
+        let demandChartInstance = null;
+        let dailyWasteChartInstance = null;
+        let wastePieChartInstance = null;
+
+        // --- INIT APP ---
+        document.addEventListener("DOMContentLoaded", () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            renderDashboard();
+            renderFleetTable();
+            renderAlerts();
+            initMaps();
+            initCharts();
+            populateSimulatorDropdown();
+        });
+
+        // --- TAB NAVIGATION ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-emerald-600', 'text-white', 'shadow-md', 'shadow-emerald-900/20');
+                btn.classList.add('text-slate-400', 'hover:bg-slate-800', 'hover:text-white');
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) {
+                activeNav.classList.remove('text-slate-400', 'hover:bg-slate-800', 'hover:text-white');
+                activeNav.classList.add('bg-emerald-600', 'text-white', 'shadow-md', 'shadow-emerald-900/20');
+            }
+
+            // Update header title
+            const titles = {
+                dashboard: "Dashboard Overview",
+                map: "Interactive GPS Dustbin Map",
+                bins: "Dustbin Fleet Management",
+                routes: "Smart Collection Route Optimization",
+                ai: "AI Fill-Level Predictions & Demand",
+                classify: "AI Waste Classification Scanner",
+                alerts: "Smart Alerts & Notifications",
+                analytics: "Advanced Analytics & Reports",
+                simulator: "IoT & ESP32 Simulator",
+                admin: "RBAC & System Settings"
+            };
+            document.getElementById('page-title').innerText = titles[tabId] || "SmartBin 360";
+
+            // Leaflet resize invalidate fix when switching tabs
+            setTimeout(() => {
+                if (mainMap) mainMap.invalidateSize();
+                if (miniMap) miniMap.invalidateSize();
+            }, 200);
+        }
+
+        // --- RENDER DASHBOARD ---
+        function renderDashboard() {
+            const tbody = document.getElementById('dashboard-bins-tbody');
+            tbody.innerHTML = "";
+
+            let fullCount = 0;
+            let totalBattery = 0;
+
+            binsData.forEach(bin => {
+                if (bin.fill >= 95) fullCount++;
+                totalBattery += bin.battery;
+
+                let badgeColor = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                if (bin.fill >= 50 && bin.fill < 80) badgeColor = "bg-amber-100 text-amber-800 border-amber-200";
+                else if (bin.fill >= 80 && bin.fill < 95) badgeColor = "bg-orange-100 text-orange-800 border-orange-200";
+                else if (bin.fill >= 95) badgeColor = "bg-rose-100 text-rose-800 border-rose-200 animate-pulse";
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3 px-3">
+                            <span class="font-bold text-slate-800 block">${bin.id}</span>
+                            <span class="text-xs text-slate-500">${bin.location}</span>
+                        </td>
+                        <td class="py-3 px-3 text-xs font-medium text-slate-600">${bin.category}</td>
+                        <td class="py-3 px-3">
+                            <div class="flex items-center gap-2">
+                                <div class="w-24 bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                                    <div class="h-2.5 rounded-full ${bin.fill >= 95 ? 'bg-rose-600' : bin.fill >= 80 ? 'bg-orange-500' : bin.fill >= 50 ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${bin.fill}%"></div>
+                                </div>
+                                <span class="text-xs font-bold text-slate-700">${bin.fill}%</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-3 text-xs font-medium text-slate-600">
+                            <span class="flex items-center gap-1 text-amber-600 font-semibold"><i data-lucide="sun" class="w-3.5 h-3.5"></i> ${bin.battery}%</span>
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeColor}">${bin.status}</span>
+                        </td>
+                        <td class="py-3 px-3 text-right">
+                            <button onclick="collectBin('${bin.id}')" class="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition">
+                                Collect
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('stat-total-bins').innerText = binsData.length;
+            document.getElementById('stat-total-bins-banner').innerText = binsData.length + " Bins";
+            document.getElementById('stat-full-bins').innerText = fullCount;
+            document.getElementById('stat-active-alerts').innerText = alertsData.length;
+            const avgBatt = Math.round(totalBattery / binsData.length);
+            document.getElementById('stat-solar-health').innerText = avgBatt + "%";
+            document.getElementById('avg-solar-health').innerText = avgBatt + "%";
+
+            lucide.createIcons();
+        }
+
+        // --- MAPS INITIALIZATION ---
+        function initMaps() {
+            // Main Map
+            mainMap = L.map('main-map').setView([13.6288, 79.4192], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(mainMap);
+
+            // Mini Map
+            miniMap = L.map('mini-map', { zoomControl: false, dragging: false, scrollWheelZoom: false }).setView([13.6288, 79.4192], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+
+            updateMapMarkers();
+        }
+
+        function updateMapMarkers() {
+            // Clear existing markers
+            Object.values(mapMarkers).forEach(m => m.remove());
+            mapMarkers = {};
+
+            binsData.forEach(bin => {
+                let color = "#10b981"; // Green
+                if (bin.fill >= 50 && bin.fill < 80) color = "#f59e0b"; // Yellow
+                else if (bin.fill >= 80 && bin.fill < 95) color = "#f97316"; // Orange
+                else if (bin.fill >= 95) color = "#e11d48"; // Red
+
+                const customIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color: ${color}; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);">${bin.fill}%</div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                });
+
+                const popupContent = `
+                    <div style="font-family: 'Inter', sans-serif; padding: 4px;">
+                        <h4 style="font-weight: 700; font-size: 14px; margin-bottom: 2px; color: #1e293b;">${bin.id}</h4>
+                        <p style="font-size: 12px; color: #64748b; margin-bottom: 6px;">${bin.location}</p>
+                        <p style="font-size: 12px; font-weight: 600; color: #0f172a;">Fill Level: <span style="color: ${color};">${bin.fill}%</span></p>
+                        <p style="font-size: 12px; color: #64748b;">Solar Battery: ${bin.battery}%</p>
+                        <button onclick="collectBin('${bin.id}')" style="margin-top: 8px; width: 100%; background: #0f172a; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">Mark Collected</button>
+                    </div>
+                `;
+
+                const markerMain = L.marker([bin.lat, bin.lng], { icon: customIcon }).addTo(mainMap).bindPopup(popupContent);
+                mapMarkers[bin.id] = markerMain;
+            });
+        }
+
+        // --- FLEET TABLE ---
+        function renderFleetTable() {
+            const tbody = document.getElementById('fleet-tbody');
+            const search = document.getElementById('fleet-search').value.toLowerCase();
+            const catFilter = document.getElementById('fleet-filter-category').value;
+            tbody.innerHTML = "";
+
+            const filtered = binsData.filter(bin => {
+                const matchSearch = bin.id.toLowerCase().includes(search) || bin.location.toLowerCase().includes(search) || bin.category.toLowerCase().includes(search);
+                const matchCat = catFilter === 'ALL' || bin.category === catFilter;
+                return matchSearch && matchCat;
+            });
+
+            filtered.forEach(bin => {
+                let badgeColor = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                if (bin.fill >= 50 && bin.fill < 80) badgeColor = "bg-amber-100 text-amber-800 border-amber-200";
+                else if (bin.fill >= 80 && bin.fill < 95) badgeColor = "bg-orange-100 text-orange-800 border-orange-200";
+                else if (bin.fill >= 95) badgeColor = "bg-rose-100 text-rose-800 border-rose-200 animate-pulse";
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3 px-4">
+                            <span class="font-bold text-slate-800 block">${bin.id}</span>
+                            <span class="text-xs text-slate-500">${bin.location}</span>
+                        </td>
+                        <td class="py-3 px-4 text-xs font-semibold text-slate-700">${bin.category}</td>
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-28 bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                                    <div class="h-2.5 rounded-full ${bin.fill >= 95 ? 'bg-rose-600' : bin.fill >= 80 ? 'bg-orange-500' : bin.fill >= 50 ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${bin.fill}%"></div>
+                                </div>
+                                <span class="text-xs font-bold text-slate-700">${bin.fill}%</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-xs font-medium text-slate-600">
+                            <span class="flex items-center gap-1 text-amber-600 font-bold"><i data-lucide="sun" class="w-3.5 h-3.5"></i> ${bin.battery}%</span>
+                        </td>
+                        <td class="py-3 px-4 text-xs text-slate-500">${bin.lastUpdate}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeColor}">${bin.status}</span>
+                        </td>
+                        <td class="py-3 px-4 text-right">
+                            <button onclick="collectBin('${bin.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition shadow-sm">
+                                Reset / Collect
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        // --- ROUTE OPTIMIZATION ---
+        function calculateOptimalRoute() {
+            showToast("AI Route Optimizer recalculated optimal collection sequence based on traffic and urgency.", "indigo");
+            renderRouteStops();
+        }
+
+        function renderRouteStops() {
+            const list = document.getElementById('route-stops-list');
+            list.innerHTML = "";
+            const criticalBins = binsData.filter(b => b.fill >= 70).slice(0, 5);
+
+            document.getElementById('route-bin-count').innerText = criticalBins.length + " Bins";
+
+            criticalBins.forEach((bin, idx) => {
+                list.innerHTML += `
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                                ${idx + 1}
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-slate-800 text-xs">${bin.id} — ${bin.location}</h5>
+                                <p class="text-[10px] text-slate-500">Fill Level: <strong class="text-rose-600">${bin.fill}%</strong> • ${bin.category}</p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-mono font-semibold text-slate-600">${(idx * 2.4 + 1.2).toFixed(1)} km</span>
+                    </div>
+                `;
+            });
+        }
+
+        function dispatchTruck() {
+            showToast("Truck Alpha successfully dispatched along the AI-optimized municipal route!", "emerald");
+        }
+
+        // --- COLLECT / RESET BIN ---
+        function collectBin(binId) {
+            const bin = binsData.find(b => b.id === binId);
+            if (bin) {
+                bin.fill = Math.floor(Math.random() * 8) + 2; // Reset to near empty
+                bin.status = "Normal";
+                bin.lastUpdate = "Just now";
+                renderDashboard();
+                renderFleetTable();
+                updateMapMarkers();
+                showToast(`Bin ${binId} successfully collected and reset by municipal worker!`, "emerald");
+            }
+        }
+
+        // --- ALERTS ---
+        function renderAlerts() {
+            const container = document.getElementById('alerts-list-container');
+            container.innerHTML = "";
+
+            alertsData.forEach(alert => {
+                container.innerHTML += `
+                    <div class="p-4 rounded-xl border border-${alert.severity}-200 bg-${alert.severity}-50 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-white text-${alert.severity}-600 flex items-center justify-center font-bold shadow-sm">
+                                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-slate-800 text-sm">${alert.title}</h5>
+                                <p class="text-xs text-slate-600 mt-0.5">${alert.desc}</p>
+                                <span class="text-[10px] text-slate-400 font-medium">${alert.time}</span>
+                            </div>
+                        </div>
+                        <button onclick="resolveAlert(${alert.id})" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition">
+                            Resolve
+                        </button>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function resolveAlert(id) {
+            alertsData = alertsData.filter(a => a.id !== id);
+            renderAlerts();
+            document.getElementById('stat-active-alerts').innerText = alertsData.length;
+            document.getElementById('alert-badge').innerText = alertsData.length;
+            showToast("Alert marked as resolved.", "emerald");
+        }
+
+        function clearAllAlerts() {
+            alertsData = [];
+            renderAlerts();
+            document.getElementById('stat-active-alerts').innerText = 0;
+            document.getElementById('alert-badge').innerText = 0;
+            showToast("All alerts cleared.", "emerald");
+        }
+
+        // --- WASTE CLASSIFICATION AI ---
+        function simulateImageClassification(itemName, category, confidence) {
+            const card = document.getElementById('classification-output');
+            let color = "bg-emerald-50 text-emerald-800 border-emerald-200";
+            if (category === 'Hazardous') color = "bg-rose-50 text-rose-800 border-rose-200";
+            else if (category === 'Wet Waste') color = "bg-amber-50 text-amber-800 border-amber-200";
+            else if (category === 'Recyclable') color = "bg-indigo-50 text-indigo-800 border-indigo-200";
+
+            card.innerHTML = `
+                <div class="space-y-3">
+                    <div class="inline-flex px-3 py-1 rounded-full text-xs font-bold border ${color}">
+                        ${category}
+                    </div>
+                    <h5 class="text-lg font-bold text-slate-800">${itemName}</h5>
+                    <p class="text-xs text-slate-500">AI Confidence Score: <strong class="text-slate-800">${confidence}%</strong></p>
+                    <p class="text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-200">Recommended Disposal: Deposit into nearest campus <span class="font-bold">${category}</span> SmartBin module.</p>
+                </div>
+            `;
+            showToast(`AI successfully classified item as ${category} (${confidence}% confidence).`, "indigo");
+        }
+
+        // --- CHARTS INITIALIZATION ---
+        function initCharts() {
+            // Demand Forecast Chart
+            const ctxDemand = document.getElementById('demandForecastChart').getContext('2d');
+            demandChartInstance = new Chart(ctxDemand, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Predicted Waste Volume (kg)',
+                        data: [420, 380, 510, 590, 720, 840, 690],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Daily Waste Chart
+            const ctxDaily = document.getElementById('dailyWasteChart').getContext('2d');
+            dailyWasteChartInstance = new Chart(ctxDaily, {
+                type: 'bar',
+                data: {
+                    labels: ['Block A', 'Library', 'Cafeteria', 'Hostel 3', 'Stadium', 'Admin'],
+                    datasets: [{
+                        label: 'Waste Collected (kg)',
+                        data: [210, 180, 350, 420, 150, 95],
+                        backgroundColor: '#0f172a'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Waste Pie Chart
+            const ctxPie = document.getElementById('wastePieChart').getContext('2d');
+            wastePieChartInstance = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Recyclable', 'Dry Waste', 'Wet Waste', 'Hazardous'],
+                    datasets: [{
+                        data: [40, 30, 22, 8],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#e11d48']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // AI Insights List
+            const insightsList = document.getElementById('ai-insights-list');
+            insightsList.innerHTML = `
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <p class="text-xs font-bold text-slate-800">Cafeteria Bin Surge Expected</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Friday lunch hours will experience a 45% surge in wet waste. Pre-dispatch recommended.</p>
+                </div>
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <p class="text-xs font-bold text-slate-800">Hostel Block 3 Overflow Pattern</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Bin fills 3x faster on weekends. Suggest upgrading bin capacity or collection frequency.</p>
+                </div>
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <p class="text-xs font-bold text-slate-800">Solar Efficiency Advisory</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">All 24 solar telemetry units operating within nominal efficiency parameters.</p>
+                </div>
+            `;
+        }
+
+        // --- IOT SIMULATOR ---
+        function populateSimulatorDropdown() {
+            const select = document.getElementById('sim-bin-select');
+            select.innerHTML = "";
+            binsData.forEach(bin => {
+                select.innerHTML += `<option value="${bin.id}">${bin.id} — ${bin.location}</option>`;
+            });
+        }
+
+        function applySensorSimulation() {
+            const binId = document.getElementById('sim-bin-select').value;
+            const fillVal = parseInt(document.getElementById('sim-fill-range').value);
+            const battVal = parseInt(document.getElementById('sim-batt-range').value) / 10;
+            const battPercent = Math.round(((battVal - 3.0) / 1.2) * 100);
+
+            const bin = binsData.find(b => b.id === binId);
+            if (bin) {
+                bin.fill = fillVal;
+                bin.battery = Math.max(10, Math.min(100, battPercent));
+                bin.status = fillVal >= 95 ? "Critical" : fillVal >= 80 ? "Warning" : fillVal >= 50 ? "Warning" : "Normal";
+                bin.lastUpdate = "Just now (Simulated IoT)";
+
+                renderDashboard();
+                renderFleetTable();
+                updateMapMarkers();
+                showToast(`MQTT Telemetry pushed for ${binId}: Fill ${fillVal}%, Battery ${bin.battery}%`, "emerald");
+            }
+        }
+
+        function triggerSimulationTick() {
+            // Randomly update one bin to demonstrate live telemetry
+            const randomBin = binsData[Math.floor(Math.random() * binsData.length)];
+            randomBin.fill = Math.min(100, randomBin.fill + Math.floor(Math.random() * 15));
+            if (randomBin.fill >= 95) randomBin.status = "Critical";
+            randomBin.lastUpdate = "Just now (Auto-Pulse)";
+
+            renderDashboard();
+            renderFleetTable();
+            updateMapMarkers();
+            showToast(`Live IoT MQTT Pulse received from ${randomBin.id} (${randomBin.fill}%)`, "emerald");
+        }
+
+        // --- RBAC & ROLE SWITCHER ---
+        function changeUserRole(role) {
+            document.getElementById('user-role-label').innerText = role === 'Admin' ? 'System Admin' : role === 'Collector' ? 'Waste Collector' : role === 'Campus Manager' ? 'Campus Manager' : 'Public Viewer';
+            showToast(`Active security role switched to: ${role}`, "indigo");
+        }
+
+        // --- MODAL CONTROLS ---
+        function openAddBinModal() {
+            document.getElementById('bin-modal').classList.remove('hidden');
+        }
+        function closeAddBinModal() {
+            document.getElementById('bin-modal').classList.add('hidden');
+        }
+
+        function saveNewBin(e) {
+            e.preventDefault();
+            const id = document.getElementById('input-bin-id').value;
+            const location = document.getElementById('input-bin-loc').value;
+            const category = document.getElementById('input-bin-cat').value;
+            const lat = parseFloat(document.getElementById('input-bin-lat').value);
+            const lng = parseFloat(document.getElementById('input-bin-lng').value);
+
+            binsData.push({ id, location, category, fill: 15, battery: 100, lat, lng, status: "Normal", lastUpdate: "Just now" });
+            closeAddBinModal();
+            renderDashboard();
+            renderFleetTable();
+            updateMapMarkers();
+            populateSimulatorDropdown();
+            showToast(`New smart dustbin ${id} registered successfully!`, "emerald");
+        }
+
+        // --- TOAST NOTIFICATION ---
+        function showToast(message, type = 'emerald') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let bg = "bg-slate-900 text-white";
+            if (type === 'emerald') bg = "bg-emerald-600 text-white";
+            else if (type === 'indigo') bg = "bg-indigo-600 text-white";
+            else if (type === 'rose') bg = "bg-rose-600 text-white";
+
+            toast.className = `${bg} px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2 pointer-events-auto transform translate-y-2 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `<i data-lucide="info" class="w-4 h-4"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function exportCSVReport() {
+            showToast("Municipal CSV report generated and downloaded successfully.", "emerald");
+        }
+    </script>
+</body>
+</html>
