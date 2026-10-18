@@ -4,7 +4,7 @@
   "private": true,
   "description": "SmartBin 360 — AI-powered smart waste management dashboard",
   "scripts": {
-    "start": "python server.py",
-    "dev": "python server.py"
+    "start": "node server.js",
+    "dev": "node server.js"
   }
 }

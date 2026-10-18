@@ -1,16 +1,35 @@
-﻿import http.server
-import os
-import socketserver
+from pathlib import Path
 
-PORT = int(os.environ.get('PORT', '3000'))
-WEB_ROOT = os.path.dirname(__file__)
+import streamlit as st
+import streamlit.components.v1 as components
 
-os.chdir(WEB_ROOT)
 
-class Handler(http.server.SimpleHTTPRequestHandler):
-    def log_message(self, format, *args):
-        print(f"[{self.address_string()}] {format % args}")
+st.set_page_config(
+    page_title="SmartBin 360",
+    page_icon="🗑️",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
-with socketserver.TCPServer(('0.0.0.0', PORT), Handler) as httpd:
-    print(f'SmartBin 360 is running at http://localhost:{PORT}')
-    httpd.serve_forever()
+st.markdown(
+    """
+    <style>
+    [data-testid="stHeader"],
+    [data-testid="stToolbar"],
+    [data-testid="stDecoration"],
+    footer,
+    #MainMenu {
+        display: none;
+    }
+
+    [data-testid="stAppViewContainer"] .main .block-container {
+        max-width: none;
+        padding: 0;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+app_html = Path(__file__).with_name("index.html").read_text(encoding="utf-8")
+components.html(app_html, height=900, scrolling=True)
